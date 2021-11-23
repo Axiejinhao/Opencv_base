@@ -9,6 +9,10 @@ ap.add_argument("-i", "--image", required=True,
                 help="Path to the image to be scanned")
 args = vars(ap.parse_args())
 
+"""
+--image=images/receipt.jpg
+"""
+
 
 def order_points(pts):
     # 一共4个坐标点
@@ -49,8 +53,9 @@ def four_point_transform(image, pts):
         [maxWidth - 1, maxHeight - 1],
         [0, maxHeight - 1]], dtype="float32")
 
-    # 计算变换矩阵
+    # 计算变换矩阵(输入坐标,输出坐标)
     M = cv2.getPerspectiveTransform(rect, dst)
+    # 对图像进行透视变换,就是变形
     warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
 
     # 返回变换后结果
@@ -75,6 +80,7 @@ def resize(image, width=None, height=None, inter=cv2.INTER_AREA):
 # 读取输入
 image = cv2.imread(args["image"])
 # 坐标也会相同变化
+# 获得比例
 ratio = image.shape[0] / 500.0
 orig = image.copy()
 
@@ -82,7 +88,9 @@ image = resize(orig, height=500)
 
 # 预处理
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# 高斯滤波
 gray = cv2.GaussianBlur(gray, (5, 5), 0)
+# 边缘检测
 edged = cv2.Canny(gray, 75, 200)
 
 # 展示预处理结果
@@ -93,14 +101,14 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # 轮廓检测
-cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[1]
+cnts = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
 cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
 
 # 遍历轮廓
 for c in cnts:
     # 计算轮廓近似
     peri = cv2.arcLength(c, True)
-    # C表示输入的点集
+    # c表示输入的点集
     # epsilon表示从原始轮廓到近似轮廓的最大距离，它是一个准确度参数
     # True表示封闭的
     approx = cv2.approxPolyDP(c, 0.02 * peri, True)
@@ -118,6 +126,7 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # 透视变换
+# reshape(4, 2)转换成4行2列
 warped = four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
 
 # 二值处理
@@ -129,3 +138,4 @@ print("STEP 3: 变换")
 cv2.imshow("Original", resize(orig, height=650))
 cv2.imshow("Scanned", resize(ref, height=650))
 cv2.waitKey(0)
+cv2.destroyAllWindows()
